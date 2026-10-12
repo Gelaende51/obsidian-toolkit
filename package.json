@@ -1,0 +1,14 @@
+{
+	"name": "obsidian-toolkit",
+	"version": "0.1.0",
+	"description": "The Obsidian layer: an Obsidian-aware CDP session for live-app tests, neighbouring plugins' pre-releases, and (to come) obsidian-launcher glue, the upstream and beta watch, the community directory and release steps. Used with development-template and electron-template; obsidian-plugin-template starts projects on all three.",
+	"type": "module",
+	"exports": {
+		"./cdp-session": "./lib/cdp-session.mjs"
+	},
+	"bin": {
+		"obsidian-peer-betas": "bin/peer-betas.mjs"
+	},
+	"files": ["lib", "bin"],
+	"license": "AGPL-3.0-only"
+}
