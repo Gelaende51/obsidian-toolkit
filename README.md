@@ -18,7 +18,7 @@ for the project itself (`allow-remote=root` in `.npmrc`), so the layers do not p
 other in:
 
 ```
-npm i -D https://codeload.github.com/Gelaende51/obsidian-toolkit/tar.gz/refs/tags/v0.2.0 \
+npm i -D https://codeload.github.com/Gelaende51/obsidian-toolkit/tar.gz/refs/tags/v0.3.0 \
          https://codeload.github.com/Gelaende51/electron-template/tar.gz/refs/tags/v0.3.0
 ```
 
@@ -38,7 +38,13 @@ npm i -D https://codeload.github.com/Gelaende51/obsidian-toolkit/tar.gz/refs/tag
   each neighbouring plugin's released version (`obsidian.neighbours` or
   `obsidian.neighboursFrom` in devkit.config.json); `--diff` against the state file.
 
+- `bin/beta-pending.mjs` / `bin/beta-local.sh` (`obsidian-beta-pending`, `obsidian-beta-local`) —
+  Obsidian's beta tested on the maintainer's machine, not in public Actions logs: the watch
+  records only the version; `beta-pending` says whether it is untested here, `beta-local` runs
+  the suites on it in a memory-capped Podman/Docker container with the Insider account from
+  `OBSIDIAN_EMAIL`/`OBSIDIAN_PASSWORD` (environment only), logs in `obsidian.betaLogs`.
+
 ## Coming
 
-obsidian-launcher glue (alternative installs, platform spoof), local beta tests, the community directory
+obsidian-launcher glue (alternative installs, platform spoof), the community directory
 (review on release, preview review, listing checks), release steps.
