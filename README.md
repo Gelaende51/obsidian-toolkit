@@ -18,7 +18,7 @@ for the project itself (`allow-remote=root` in `.npmrc`), so the layers do not p
 other in:
 
 ```
-npm i -D https://codeload.github.com/Gelaende51/obsidian-toolkit/tar.gz/refs/tags/v0.1.0 \
+npm i -D https://codeload.github.com/Gelaende51/obsidian-toolkit/tar.gz/refs/tags/v0.2.0 \
          https://codeload.github.com/Gelaende51/electron-template/tar.gz/refs/tags/v0.3.0
 ```
 
@@ -33,8 +33,12 @@ npm i -D https://codeload.github.com/Gelaende51/obsidian-toolkit/tar.gz/refs/tag
   with each neighbour swapped for its newest pre-release where one is newer than its last
   release: a canary for what the neighbours ship next.
 
+- `bin/upstream-watch.mjs` (`obsidian-upstream-watch [--diff]`) — Obsidian's latest release,
+  its newest beta (version number only; `betaNew` on its own, to be tested privately), and
+  each neighbouring plugin's released version (`obsidian.neighbours` or
+  `obsidian.neighboursFrom` in devkit.config.json); `--diff` against the state file.
+
 ## Coming
 
-obsidian-launcher glue (alternative installs, platform spoof), the upstream watch
-(Obsidian, its beta version, neighbour plugins), local beta tests, the community directory
+obsidian-launcher glue (alternative installs, platform spoof), local beta tests, the community directory
 (review on release, preview review, listing checks), release steps.
