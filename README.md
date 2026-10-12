@@ -18,8 +18,8 @@ for the project itself (`allow-remote=root` in `.npmrc`), so the layers do not p
 other in:
 
 ```
-npm i -D https://codeload.github.com/Gelaende51/obsidian-toolkit/tar.gz/refs/tags/v0.3.0 \
-         https://codeload.github.com/Gelaende51/electron-template/tar.gz/refs/tags/v0.3.0
+npm i -D https://codeload.github.com/Gelaende51/obsidian-toolkit/tar.gz/refs/tags/v0.4.0 \
+         https://codeload.github.com/Gelaende51/electron-template/tar.gz/refs/tags/v0.4.0
 ```
 
 ## In here so far
@@ -44,7 +44,13 @@ npm i -D https://codeload.github.com/Gelaende51/obsidian-toolkit/tar.gz/refs/tag
   the suites on it in a memory-capped Podman/Docker container with the Insider account from
   `OBSIDIAN_EMAIL`/`OBSIDIAN_PASSWORD` (environment only), logs in `obsidian.betaLogs`.
 
+- `bin/launch-alt.mjs` (`obsidian-launch-alt <version> <vault> -p … -- <args>`) — starts an
+  Obsidian obsidian-launcher did not download (Flatpak, Snap, a distribution's package,
+  Wine, FreeBSD's Electron) the way the launcher starts its own: vault copy with plugins,
+  a configuration directory with the app version asked for. `OBSIDIAN_COMMAND`,
+  `OBSIDIAN_PATHS=wine`, `OBSIDIAN_PLATFORM_AS=linux` (FreeBSD). Needs obsidian-launcher.
+
 ## Coming
 
-obsidian-launcher glue (alternative installs, platform spoof), the community directory
+Reusable workflows for Obsidian's app on other Electrons (old engine, system Electron, FreeBSD, Alpine), the community directory
 (review on release, preview review, listing checks), release steps.
