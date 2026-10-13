@@ -29,7 +29,7 @@
 # here (development-template's harness: Skipped).
 set -u
 SUITE="${1:?usage: obsidian-run-suite <suite, e.g. test-tab>}"
-TOOLKIT="$(cd "$(dirname "$0")/.." && pwd)"
+TOOLKIT="$(dirname "$0")/.."  # relative when called by a relative path, as the wrappers do
 cfg() { node -e 'const c=JSON.parse(require("fs").readFileSync("devkit.config.json","utf8")); const v=('"$1"'); process.stdout.write(Array.isArray(v)?v.join(" "):String(v??""))' 2>/dev/null || true; }
 ID=$(cfg 'c.id')
 TEST_VAULT=$(cfg 'c.obsidian?.testVault'); TEST_VAULT=${TEST_VAULT:-.dev/test-vault}
@@ -99,7 +99,10 @@ fi
 
 # The port answers before the vault has loaded: wait for a page and for the
 # plugin. Longer where the machine is slow on purpose (SLOW).
-ask() { OBSIDIAN_CDP_PORT="$PORT" ALLOW_SETTINGS=1 timeout 20 node --input-type=module -e "const { connect } = await import('$TOOLKIT/lib/cdp-session.mjs'); const p = await connect(); console.log(await p.evaluate(process.argv[1])); p.close();" "$1" 2>/dev/null; }
+# By package name, resolved from the project's node_modules: an absolute
+# path inside the -e string is not translated by Git Bash, and Windows' Node
+# cannot import "/d/a/…" (every Windows run waited out the timeout here).
+ask() { OBSIDIAN_CDP_PORT="$PORT" ALLOW_SETTINGS=1 timeout 20 node --input-type=module -e "const { connect } = await import('obsidian-toolkit/cdp-session'); const p = await connect(); console.log(await p.evaluate(process.argv[1])); p.close();" "$1" 2>/dev/null; }
 for _ in $(seq 1 $((240 * ${SLOW:-${LURE_SLOW:-1}}))); do
 	if curl -s --max-time 1 "http://127.0.0.1:$PORT/json/list" | grep -q '"type": *"page"'; then
 		if ask "return !!app?.plugins?.plugins?.[$(node -p 'JSON.stringify(process.argv[1])' "$ID")];" | grep -q true; then
