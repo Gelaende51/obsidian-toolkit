@@ -1,11 +1,12 @@
 {
 	"name": "obsidian-toolkit",
-	"version": "0.11.1",
+	"version": "0.12.0",
 	"description": "The Obsidian layer: an Obsidian-aware CDP session for live-app tests, neighbouring plugins' pre-releases, and (to come) obsidian-launcher glue, the upstream and beta watch, the community directory and release steps. Used with development-template and electron-template; obsidian-plugin-template starts projects on all three.",
 	"type": "module",
 	"exports": {
 		"./cdp-session": "./lib/cdp-session.mjs",
-		"./listing-tags": "./bin/listing-tags.mjs"
+		"./listing-tags": "./bin/listing-tags.mjs",
+		"./i18n-selector": "./bin/i18n-selector.mjs"
 	},
 	"bin": {
 		"obsidian-peer-betas": "bin/peer-betas.mjs",
@@ -20,7 +21,9 @@
 		"obsidian-check-listing": "bin/check-listing.mjs",
 		"obsidian-listing-tags": "bin/listing-tags.mjs",
 		"obsidian-release": "bin/release.mjs",
-		"obsidian-release-dispatch": "bin/release-dispatch.sh"
+		"obsidian-release-dispatch": "bin/release-dispatch.sh",
+		"obsidian-i18n-stamp": "bin/i18n-stamp.mjs",
+		"obsidian-i18n-selector": "bin/i18n-selector.mjs"
 	},
 	"files": [
 		"lib",

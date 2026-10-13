@@ -18,8 +18,8 @@ for the project itself (`allow-remote=root` in `.npmrc`), so the layers do not p
 other in:
 
 ```
-npm i -D https://codeload.github.com/Gelaende51/obsidian-toolkit/tar.gz/refs/tags/v0.11.1 \
-         https://codeload.github.com/Gelaende51/electron-template/tar.gz/refs/tags/v0.11.1
+npm i -D https://codeload.github.com/Gelaende51/obsidian-toolkit/tar.gz/refs/tags/v0.12.0 \
+         https://codeload.github.com/Gelaende51/electron-template/tar.gz/refs/tags/v0.12.0
 ```
 
 ## In here so far
@@ -96,3 +96,10 @@ npm i -D https://codeload.github.com/Gelaende51/obsidian-toolkit/tar.gz/refs/tag
 - `.github/workflows/release.yml` — reusable: preview scan, release commit (changelogs, version
   files, optional after-commit step), tag, build, attested release, then the directory's
   release scan, listing and recorded review.
+- `bin/i18n-stamp.mjs` (`obsidian-i18n-stamp [--freshness [--check] [--only README,CHANGELOG]]`)
+  — writes each document's language row (README, usage guide, changelog; only the languages
+  that document is translated into, an invisible placeholder while there are none), and with
+  `--freshness` claims a translation current by the English commit it reflects.
+- `bin/i18n-selector.mjs` (`obsidian-i18n-selector <doc> <lang> [langs…]`;
+  `import { selector, LANGUAGES } from "obsidian-toolkit/i18n-selector"`) — the language row,
+  in Obsidian's own language list.
