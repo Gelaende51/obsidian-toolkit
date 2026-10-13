@@ -1,7 +1,9 @@
 # Releases an Obsidian plugin: prepares the release commit, tags it, builds
 # the assets on GitHub's runners and attaches a signed provenance attestation
 # to each, so anyone can verify that the main.js they load was built from the
-# repository at that commit (`gh attestation verify main.js --repo <owner/name>`).
+# repository at that commit (`gh attestation verify main.js --repo <owner/name>
+# --signer-repo Gelaende51/obsidian-toolkit`: this workflow signs, so this
+# repository is the signer).
 # Then the community directory's side, when the OBSIDIAN_COMMUNITY_COOKIE
 # secret holds a signed-in session (obsidian-toolkit's directory-session keeps
 # it alive): the preview scan before anything is written, the release scan,
