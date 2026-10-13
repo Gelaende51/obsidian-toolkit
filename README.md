@@ -18,8 +18,8 @@ for the project itself (`allow-remote=root` in `.npmrc`), so the layers do not p
 other in:
 
 ```
-npm i -D https://codeload.github.com/Gelaende51/obsidian-toolkit/tar.gz/refs/tags/v0.9.0 \
-         https://codeload.github.com/Gelaende51/electron-template/tar.gz/refs/tags/v0.9.0
+npm i -D https://codeload.github.com/Gelaende51/obsidian-toolkit/tar.gz/refs/tags/v0.10.0 \
+         https://codeload.github.com/Gelaende51/electron-template/tar.gz/refs/tags/v0.10.0
 ```
 
 ## In here so far
@@ -77,7 +77,16 @@ npm i -D https://codeload.github.com/Gelaende51/obsidian-toolkit/tar.gz/refs/tag
   a silent renewal, a headless sign-in with the account a wrapper hands over (never in the
   environment of child processes), a desktop prompt as the last resort; daily by systemd timer.
 
+- `bin/check-listing.mjs` (`obsidian-check-listing [--remote]`) — validates listing.json (the
+  fields the directory keeps that manifest.json has no place for: tags, pricing, icon…) and,
+  with `--remote`, compares it with the live listing; exit 2 when only the site is behind.
+- `bin/listing-tags.mjs` (`obsidian-listing-tags [--refresh]`) — the directory's tag table,
+  and whether the site's has changed.
+- `bin/release.mjs` (`obsidian-release <x.y.z> [--check]`) — the mechanical half of a release:
+  the changelog's Unreleased section and every translation's pending one become the
+  version's (heading, date, compare-link footnote in each file's own wording), and
+  manifest.json, package.json and versions.json take the version.
+
 ## Coming
 
-The listing checks (listing metadata, minAppVersion) and the release steps (manifest and
-versions files, changelog headings, attested release).
+The rest of the release (the Release workflow itself as a reusable one).
