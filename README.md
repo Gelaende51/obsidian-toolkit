@@ -18,8 +18,8 @@ for the project itself (`allow-remote=root` in `.npmrc`), so the layers do not p
 other in:
 
 ```
-npm i -D https://codeload.github.com/Gelaende51/obsidian-toolkit/tar.gz/refs/tags/v0.6.0 \
-         https://codeload.github.com/Gelaende51/electron-template/tar.gz/refs/tags/v0.6.0
+npm i -D https://codeload.github.com/Gelaende51/obsidian-toolkit/tar.gz/refs/tags/v0.7.0 \
+         https://codeload.github.com/Gelaende51/electron-template/tar.gz/refs/tags/v0.7.0
 ```
 
 ## In here so far
@@ -55,6 +55,14 @@ npm i -D https://codeload.github.com/Gelaende51/obsidian-toolkit/tar.gz/refs/tag
   (musl) in a container; `suites`, `versions`, `run`.
 
 - `.github/workflows/electron-next.yml` — reusable canary: Obsidian's app on `electron@beta`.
+
+- `bin/run-suite.sh` (`obsidian-run-suite <suite>`) — one suite against a sandboxed Obsidian:
+  obsidian-launcher (or launch-alt for `OBSIDIAN_COMMAND`), the test vault copied (or put under
+  `VAULT_PARENT`), the plugin and its neighbours installed (`obsidian.neighbours`,
+  `obsidian.suitePlugins` with `id@platform`), waits for the plugin, prepares, runs
+  `<suitesDir>/<suite>.mjs` (on `SUITE_NODE` under Wine). Use it as electron-suites' `RUN_SUITE`.
+- `bin/prepare.mjs` (`obsidian-prepare`) — neighbours off but the plugin and
+  `obsidian.keepEnabled`, window at `obsidian.window`.
 
 ## Coming
 

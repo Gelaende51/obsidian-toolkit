@@ -5,7 +5,7 @@
  * latest release of every neighbouring plugin the suites install. From Lure
  * (scripts/upstream-versions.mjs). The neighbours come from devkit.config.json:
  *
- *   "obsidian": { "neighbours": ["folder-notes", "breadcrumbs"] }
+ *   "obsidian": { "neighbours": ["folder-notes"], "suitePlugins": { "test-x": ["cmdr"] } }
  *   "obsidian": { "neighboursFrom": ".dev/ci-run.sh" }   // its `-p id:x` specs, one list
  *
  *   obsidian-upstream-watch          # print them as JSON
@@ -36,7 +36,7 @@ const json = async (url) => {
 const ob = config.obsidian ?? {};
 const ids = ob.neighboursFrom
 	? [...readFileSync(ob.neighboursFrom, "utf8").matchAll(/-p id:([\w-]+)/g)].map((m) => m[1])
-	: [...(ob.neighbours ?? [])];
+	: [...new Set([...(ob.neighbours ?? []), ...Object.values(ob.suitePlugins ?? {}).flat()].map((id) => id.replace(/@.*/, "")))];
 const [desktop, plugins] = await Promise.all([json(`${RAW}/desktop-releases.json`), json(`${RAW}/community-plugins.json`)]);
 const repoOf = Object.fromEntries(plugins.map((p) => [p.id, p.repo]));
 
