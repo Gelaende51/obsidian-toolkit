@@ -79,5 +79,5 @@ npm i -D https://codeload.github.com/Gelaende51/obsidian-toolkit/tar.gz/refs/tag
 
 ## Coming
 
- the community directory
-(review on release, preview review, listing checks), release steps.
+The listing checks (listing metadata, minAppVersion) and the release steps (manifest and
+versions files, changelog headings, attested release).
