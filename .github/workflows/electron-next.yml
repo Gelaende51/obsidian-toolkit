@@ -1,0 +1,50 @@
+# A canary: Obsidian's own app (app.asar from the Linux tarball) on the next
+# Electron (npm's electron@beta), before an installer ships with it —
+# Chromium's layout and APIs as they will be. npm no longer runs install
+# scripts unasked, and Electron's downloads the binary: it is run here. From Lure.
+#
+#   electron-next:
+#     uses: Gelaende51/obsidian-toolkit/.github/workflows/electron-next.yml@v0.6.0
+#     with:
+#       suites: test-a
+name: Electron next
+on:
+  workflow_call:
+    inputs:
+      suites: { type: string, required: true }
+      electron: { type: string, default: beta, description: "npm dist-tag or version of electron" }
+      run: { type: string, default: ".dev/ci-suites.sh" }
+      build: { type: string, default: "npm ci && node esbuild.config.mjs production" }
+      node-version: { type: string, default: "24" }
+      timeout: { type: number, default: 150 }
+
+jobs:
+  electron-next:
+    runs-on: ubuntu-latest
+    timeout-minutes: ${{ inputs.timeout }}
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
+        with:
+          node-version: ${{ inputs.node-version }}
+          cache: npm
+      - name: Build
+        run: ${{ inputs.build }}
+      - name: The next Electron, and Obsidian's app for it
+        env:
+          ELECTRON: ${{ inputs.electron }}
+        run: |
+          npm install --prefix /tmp/electron-next "electron@$ELECTRON" >/dev/null
+          node /tmp/electron-next/node_modules/electron/install.js
+          electron=/tmp/electron-next/node_modules/electron/dist/electron
+          echo "electron: $($electron --version 2>/dev/null)"
+          url=$(curl -s -H "authorization: Bearer ${{ github.token }}" https://api.github.com/repos/obsidianmd/obsidian-releases/releases/latest | jq -r '.assets[] | select(.name | test("^obsidian-[0-9.]*\\.tar\\.gz$")) | .browser_download_url' | head -1)
+          curl -sL "$url" | tar -xz -C /tmp
+          echo "OBSIDIAN_COMMAND=$electron $(ls -d /tmp/obsidian-*/resources/app.asar | head -1)" >> "$GITHUB_ENV"
+      - name: Run the suites
+        env:
+          SUITES: ${{ inputs.suites }}
+          VERSIONS: latest
+          OBSIDIAN_EXTRA_ARGS: --no-sandbox
+          RUN: ${{ inputs.run }}
+        run: eval "$RUN"

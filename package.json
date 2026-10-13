@@ -1,6 +1,6 @@
 {
 	"name": "obsidian-toolkit",
-	"version": "0.5.0",
+	"version": "0.6.0",
 	"description": "The Obsidian layer: an Obsidian-aware CDP session for live-app tests, neighbouring plugins' pre-releases, and (to come) obsidian-launcher glue, the upstream and beta watch, the community directory and release steps. Used with development-template and electron-template; obsidian-plugin-template starts projects on all three.",
 	"type": "module",
 	"exports": {

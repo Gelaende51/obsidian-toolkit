@@ -18,8 +18,8 @@ for the project itself (`allow-remote=root` in `.npmrc`), so the layers do not p
 other in:
 
 ```
-npm i -D https://codeload.github.com/Gelaende51/obsidian-toolkit/tar.gz/refs/tags/v0.5.0 \
-         https://codeload.github.com/Gelaende51/electron-template/tar.gz/refs/tags/v0.5.0
+npm i -D https://codeload.github.com/Gelaende51/obsidian-toolkit/tar.gz/refs/tags/v0.6.0 \
+         https://codeload.github.com/Gelaende51/electron-template/tar.gz/refs/tags/v0.6.0
 ```
 
 ## In here so far
@@ -53,6 +53,8 @@ npm i -D https://codeload.github.com/Gelaende51/obsidian-toolkit/tar.gz/refs/tag
 - `.github/workflows/freebsd.yml`, `alpine.yml` — reusable: Obsidian's own app (app.asar from
   the Linux tarball) on FreeBSD's Electron in a FreeBSD VM, and on Alpine edge's Electron
   (musl) in a container; `suites`, `versions`, `run`.
+
+- `.github/workflows/electron-next.yml` — reusable canary: Obsidian's app on `electron@beta`.
 
 ## Coming
 
