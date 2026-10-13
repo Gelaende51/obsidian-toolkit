@@ -1,0 +1,42 @@
+# A plugin's suites on Alpine (musl), where vendor Electron binaries do not
+# run even with gcompat: Obsidian's own app (app.asar from the Linux tarball)
+# on Alpine edge's Electron package, in an alpine:edge container. From Lure.
+#
+#   alpine:
+#     uses: Gelaende51/obsidian-toolkit/.github/workflows/alpine.yml@v0.5.0
+#     with:
+#       suites: test-a
+name: Alpine
+on:
+  workflow_call:
+    inputs:
+      suites: { type: string, required: true }
+      versions: { type: string, default: latest }
+      run: { type: string, default: "bash .dev/ci-suites.sh", description: "Runs $SUITES on $VERSIONS (electron-template's electron-suites)" }
+      timeout: { type: number, default: 180 }
+
+jobs:
+  alpine:
+    runs-on: ubuntu-latest
+    timeout-minutes: ${{ inputs.timeout }}
+    steps:
+      - uses: actions/checkout@v7
+      - name: Alpine, its Electron and the suites
+        env:
+          SUITES: ${{ inputs.suites }}
+          VERSIONS: ${{ inputs.versions }}
+          RUN: ${{ inputs.run }}
+        run: |
+          docker run --rm --shm-size=2g -e SUITES -e VERSIONS -e RUN -v "$PWD:/repo" -w /repo alpine:edge sh -c '
+            # Electron is packaged for edge only (community, else testing).
+            echo "https://dl-cdn.alpinelinux.org/alpine/edge/testing" >> /etc/apk/repositories
+            apk add --no-cache bash nodejs npm curl git electron xvfb-run xvfb procps-ng font-dejavu python3 make g++ >/dev/null || { apk search -q electron | head; exit 1; }
+            electron=$(command -v electron); echo "electron: $electron $($electron --version 2>/dev/null)"
+            url=$(curl -s https://api.github.com/repos/obsidianmd/obsidian-releases/releases/latest | grep -o "\"browser_download_url\": *\"[^\"]*obsidian-[0-9.]*\.tar\.gz\"" | head -1 | cut -d"\"" -f4)
+            curl -sL "$url" | tar -xz -C /tmp
+            asar=$(ls -d /tmp/obsidian-*/resources/app.asar | head -1)
+            npm ci --no-audit --no-fund >/dev/null && node esbuild.config.mjs production || exit 1
+            npm install --no-save --no-package-lock obsidian-launcher@3 >/dev/null 2>&1
+            (cd node_modules/classic-level && node -e "require(\"node-gyp-build\")(\".\")" 2>/dev/null || npx --yes node-gyp rebuild >/dev/null)
+            export OBSIDIAN_COMMAND="$electron $asar" OBSIDIAN_EXTRA_ARGS=--no-sandbox; eval "$RUN"'
+

@@ -18,8 +18,8 @@ for the project itself (`allow-remote=root` in `.npmrc`), so the layers do not p
 other in:
 
 ```
-npm i -D https://codeload.github.com/Gelaende51/obsidian-toolkit/tar.gz/refs/tags/v0.4.0 \
-         https://codeload.github.com/Gelaende51/electron-template/tar.gz/refs/tags/v0.4.0
+npm i -D https://codeload.github.com/Gelaende51/obsidian-toolkit/tar.gz/refs/tags/v0.5.0 \
+         https://codeload.github.com/Gelaende51/electron-template/tar.gz/refs/tags/v0.5.0
 ```
 
 ## In here so far
@@ -50,7 +50,11 @@ npm i -D https://codeload.github.com/Gelaende51/obsidian-toolkit/tar.gz/refs/tag
   a configuration directory with the app version asked for. `OBSIDIAN_COMMAND`,
   `OBSIDIAN_PATHS=wine`, `OBSIDIAN_PLATFORM_AS=linux` (FreeBSD). Needs obsidian-launcher.
 
+- `.github/workflows/freebsd.yml`, `alpine.yml` — reusable: Obsidian's own app (app.asar from
+  the Linux tarball) on FreeBSD's Electron in a FreeBSD VM, and on Alpine edge's Electron
+  (musl) in a container; `suites`, `versions`, `run`.
+
 ## Coming
 
-Reusable workflows for Obsidian's app on other Electrons (old engine, system Electron, FreeBSD, Alpine), the community directory
+ the community directory
 (review on release, preview review, listing checks), release steps.

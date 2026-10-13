@@ -1,0 +1,58 @@
+# A plugin's suites on FreeBSD, for which Obsidian publishes no build: its own
+# app (the app.asar from the Linux tarball, and the app version on top) on
+# FreeBSD's newest Electron package, in a FreeBSD VM on the Linux runner.
+# obsidian-launcher is told it runs on Linux (OBSIDIAN_PLATFORM_AS) and its
+# classic-level is compiled here (no FreeBSD build). From Lure.
+#
+#   freebsd:
+#     uses: Gelaende51/obsidian-toolkit/.github/workflows/freebsd.yml@v0.5.0
+#     with:
+#       suites: test-a
+name: FreeBSD
+on:
+  workflow_call:
+    inputs:
+      suites: { type: string, required: true }
+      versions: { type: string, default: latest }
+      run: { type: string, default: "bash .dev/ci-suites.sh", description: "Runs $SUITES on $VERSIONS (electron-template's electron-suites)" }
+      timeout: { type: number, default: 180 }
+
+jobs:
+  freebsd:
+    runs-on: ubuntu-latest
+    timeout-minutes: ${{ inputs.timeout }}
+    steps:
+      - uses: actions/checkout@v7
+      - name: FreeBSD, its Electron and the suites
+        uses: vmactions/freebsd-vm@v1
+        with:
+          usesh: true
+          mem: 8192
+          envs: "SUITES VERSIONS RUN"
+          prepare: |
+            # pgrep and pkill are in FreeBSD's base system.
+            pkg install -y node npm bash curl git xorg-vfbserver xauth python3 gmake dejavu
+            # The scripts ask for /bin/bash; FreeBSD keeps it in /usr/local.
+            ln -sf /usr/local/bin/bash /bin/bash
+            pkg search -q '^electron[0-9]' | sort -V | tail -1 | xargs pkg install -y
+          run: |
+            set -e
+            electron=$(ls /usr/local/bin/electron* | sort -V | tail -1)
+            echo "electron: $electron"
+            url=$(curl -s https://api.github.com/repos/obsidianmd/obsidian-releases/releases/latest | grep -o '"browser_download_url": *"[^"]*obsidian-[0-9.]*\.tar\.gz"' | head -1 | cut -d'"' -f4)
+            curl -sL "$url" | tar -xz -C /tmp
+            asar=$(ls -d /tmp/obsidian-*/resources/app.asar | head -1)
+            npm ci
+            node esbuild.config.mjs production
+            # The launcher's library writes Obsidian's local storage through
+            # classic-level, which ships no FreeBSD build: compiled here.
+            npm install --no-save --no-package-lock obsidian-launcher@3
+            (cd node_modules/classic-level && npx --yes node-gyp rebuild)
+            Xvfb :99 -screen 0 1920x1080x24 >/dev/null 2>&1 &
+            export DISPLAY=:99 OBSIDIAN_COMMAND="$electron $asar" OBSIDIAN_EXTRA_ARGS=--no-sandbox OBSIDIAN_PLATFORM_AS=linux
+            eval "$RUN"
+        env:
+          SUITES: ${{ inputs.suites }}
+          VERSIONS: ${{ inputs.versions }}
+          RUN: ${{ inputs.run }}
+
