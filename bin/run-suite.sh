@@ -58,6 +58,24 @@ fi
 # oldest that can run it for "earliest" — which is what users on each end have.
 INSTALLER="${OBSIDIAN_INSTALLER:-$([ "$VERSION" = earliest ] && echo earliest || echo latest)}"
 
+# A minAppVersion Obsidian only ever shipped as a beta (1.4.0, 1.7.2) needs an
+# Insider account to download, and no user without one ever ran it: "earliest"
+# is then the first public release after it. Offline, it stays as it was.
+if [ "$VERSION" = earliest ]; then
+	public=$(node -e '
+		const min = JSON.parse(require("fs").readFileSync("manifest.json", "utf8")).minAppVersion;
+		const cmp = (a, b) => { const x = a.split(".").map(Number), y = b.split(".").map(Number); for (let i = 0; i < 3; i++) if ((x[i] || 0) !== (y[i] || 0)) return (x[i] || 0) - (y[i] || 0); return 0; };
+		fetch("https://raw.githubusercontent.com/jesse-r-s-hines/wdio-obsidian-service/HEAD/obsidian-versions.json").then((r) => r.json()).then(({ versions }) => {
+			if (!versions.find((v) => v.version === min)?.isBeta) return;
+			const next = versions.filter((v) => !v.isBeta && cmp(v.version, min) > 0).sort((a, b) => cmp(a.version, b.version))[0];
+			if (next) console.log(min + " " + next.version);
+		}).catch(() => {});' 2>/dev/null || true)
+	if [ -n "$public" ]; then
+		echo "minAppVersion ${public% *} was only released as a beta; earliest is ${public#* }, the first public release after it" >&2
+		VERSION=${public#* }
+	fi
+fi
+
 # Obsidian is stopped on exit by where it runs from — the launcher's cache, or
 # launch-alt's tag — so a system Obsidian is untouched. Waited for: Obsidian is
 # single-instance, and the next suite's launch would go to the copy still
