@@ -18,8 +18,8 @@ for the project itself (`allow-remote=root` in `.npmrc`), so the layers do not p
 other in:
 
 ```
-npm i -D https://codeload.github.com/Gelaende51/obsidian-toolkit/tar.gz/refs/tags/v0.10.0 \
-         https://codeload.github.com/Gelaende51/electron-template/tar.gz/refs/tags/v0.10.0
+npm i -D https://codeload.github.com/Gelaende51/obsidian-toolkit/tar.gz/refs/tags/v0.10.1 \
+         https://codeload.github.com/Gelaende51/electron-template/tar.gz/refs/tags/v0.10.1
 ```
 
 ## In here so far
@@ -80,7 +80,7 @@ npm i -D https://codeload.github.com/Gelaende51/obsidian-toolkit/tar.gz/refs/tag
 - `bin/check-listing.mjs` (`obsidian-check-listing [--remote]`) — validates listing.json (the
   fields the directory keeps that manifest.json has no place for: tags, pricing, icon…) and,
   with `--remote`, compares it with the live listing; exit 2 when only the site is behind.
-- `bin/listing-tags.mjs` (`obsidian-listing-tags [--refresh]`) — the directory's tag table,
+- `bin/listing-tags.mjs` (`obsidian-listing-tags [--refresh]`; `import { TAGS } from "obsidian-toolkit/listing-tags"`) — the directory's tag table,
   and whether the site's has changed.
 - `bin/release.mjs` (`obsidian-release <x.y.z> [--check]`) — the mechanical half of a release:
   the changelog's Unreleased section and every translation's pending one become the
