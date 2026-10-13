@@ -29,7 +29,11 @@
 # here (development-template's harness: Skipped).
 set -u
 SUITE="${1:?usage: obsidian-run-suite <suite, e.g. test-tab>}"
-TOOLKIT="$(dirname "$0")/.."  # relative when called by a relative path, as the wrappers do
+# Through npm's bin link (node_modules/.bin/…) $0 is the link: follow it.
+# Called by path it stays as given — relative from the wrappers, which
+# Windows' Node needs (Git Bash does not translate paths inside strings).
+self="$0"; [ -L "$self" ] && self="$(readlink -f "$self")"
+TOOLKIT="$(dirname "$self")/.."
 cfg() { node -e 'const c=JSON.parse(require("fs").readFileSync("devkit.config.json","utf8")); const v=('"$1"'); process.stdout.write(Array.isArray(v)?v.join(" "):String(v??""))' 2>/dev/null || true; }
 ID=$(cfg 'c.id')
 TEST_VAULT=$(cfg 'c.obsidian?.testVault'); TEST_VAULT=${TEST_VAULT:-.dev/test-vault}

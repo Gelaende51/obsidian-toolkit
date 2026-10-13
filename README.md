@@ -18,8 +18,8 @@ for the project itself (`allow-remote=root` in `.npmrc`), so the layers do not p
 other in:
 
 ```
-npm i -D https://codeload.github.com/Gelaende51/obsidian-toolkit/tar.gz/refs/tags/v0.11.0 \
-         https://codeload.github.com/Gelaende51/electron-template/tar.gz/refs/tags/v0.11.0
+npm i -D https://codeload.github.com/Gelaende51/obsidian-toolkit/tar.gz/refs/tags/v0.11.1 \
+         https://codeload.github.com/Gelaende51/electron-template/tar.gz/refs/tags/v0.11.1
 ```
 
 ## In here so far

@@ -19,7 +19,11 @@
 # devkit.config.json: "obsidian.directoryId" (else manifest.json's id),
 # "obsidian.releaseFiles" (what must be committed; default below).
 set -eu
-TOOLKIT="$(dirname "$0")/.."
+# Through npm's bin link (node_modules/.bin/…) $0 is the link: follow it.
+# Called by path it stays as given — relative from the wrappers, which
+# Windows' Node needs (Git Bash does not translate paths inside strings).
+self="$0"; [ -L "$self" ] && self="$(readlink -f "$self")"
+TOOLKIT="$(dirname "$self")/.."
 VERSION="${1:?usage: obsidian-release-dispatch <x.y.z>}"
 cfg() { node -e 'let c={}; try { c=JSON.parse(require("fs").readFileSync("devkit.config.json","utf8")) } catch {} const v=('"$1"'); process.stdout.write(Array.isArray(v)?v.join(" "):String(v??""))'; }
 ID=$(cfg 'c.obsidian?.directoryId ?? JSON.parse(require("fs").readFileSync("manifest.json","utf8")).id')
