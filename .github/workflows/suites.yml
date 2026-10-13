@@ -1,53 +1,179 @@
-# A plugin's live-app suites against a sandboxed Obsidian: one job per suite ×
-# Obsidian version × runner, so a failure names its suite and version and the
-# rest still report. The suites come from devkit.config.json ("suites") unless
-# given. Obsidian downloads are cached per version and runner. A suite that
-# exits 2 skipped cases it could not ask there: a warning, not a failure. On a
-# failure the first failed assertion's screenshot and header HTML are kept
-# (development-template's harness, SHOTS). From Lure.
+# A plugin's test suites on GitHub's runners: a suite that connects to
+# Obsidian (`connect()`) gets a sandboxed Obsidian of its own (obsidian-run-suite
+# through the project's run script) on a virtual display, one job per suite ×
+# Obsidian version × system; the others are unit suites, run in plain Node.
+# Obsidian downloads are cached per version and system. A suite that exits 2
+# skipped cases it could not ask there: a warning, not a failure. Kept: the
+# pictures suites take on purpose (shots/look/), and on a failure Obsidian's
+# log and the first failed assertion's screenshot (development-template's
+# harness, SHOTS). From Lure.
 #
 #   test:
-#     uses: Gelaende51/obsidian-toolkit/.github/workflows/suites.yml@v0.8.0
+#     uses: Gelaende51/obsidian-toolkit/.github/workflows/suites.yml@v0.13.0
 #     with:
-#       versions: '["earliest", "latest"]'
-#       runners: '["ubuntu-latest", "windows-latest", "macos-latest"]'
+#       suites: ${{ inputs.suites }}    # space separated; empty: devkit.config.json's, else every .dev/test-*.mjs
+#       filter: ${{ inputs.filter }}    # only the cases whose name contains this
+#       versions: ${{ inputs.obsidian }}   # both | latest | earliest
+#       os: ${{ inputs.os }}            # linux | windows | windows-arm | windows-all | macos | macos-all | both | all
 name: Suites
 on:
   workflow_call:
     inputs:
-      suites: { type: string, default: "", description: "JSON array; default: devkit.config.json's suites" }
-      versions: { type: string, default: '["earliest", "latest"]' }
-      runners: { type: string, default: '["ubuntu-latest"]' }
+      suites: { type: string, default: "" }
+      filter: { type: string, default: "" }
+      versions: { type: string, default: both }
+      os: { type: string, default: linux }
       run-suite: { type: string, default: ".dev/ci-run.sh" }
       build: { type: string, default: "npm ci && node esbuild.config.mjs production" }
       node-version: { type: string, default: "24" }
-      timeout: { type: number, default: 60 }
+      timeout: { type: number, default: 45 }
 
 jobs:
   plan:
     runs-on: ubuntu-latest
     outputs:
-      suites: ${{ steps.pick.outputs.suites }}
+      suites: ${{ steps.plan.outputs.suites }}
+      unit: ${{ steps.plan.outputs.unit }}
+      versions: ${{ steps.plan.outputs.versions }}
+      linux: ${{ steps.plan.outputs.linux }}
+      desktops: ${{ steps.plan.outputs.desktops }}
     steps:
       - uses: actions/checkout@v7
-      - id: pick
+      - id: plan
         env:
-          GIVEN: ${{ inputs.suites }}
+          WANT_SUITES: ${{ inputs.suites }}
+          WANT_VERSIONS: ${{ inputs.versions }}
+          WANT_OS: ${{ inputs.os }}
         run: |
-          if [ -n "$GIVEN" ]; then echo "suites=$GIVEN" >> "$GITHUB_OUTPUT"
-          else echo "suites=$(jq -c '.suites // []' devkit.config.json)" >> "$GITHUB_OUTPUT"; fi
+          dir=$(jq -r '.obsidian.suitesDir // ".dev"' devkit.config.json 2>/dev/null || echo .dev)
+          configured=$(jq -r '(.suites // []) | join(" ")' devkit.config.json 2>/dev/null || true)
+          all=$(ls "$dir"/test-*.mjs 2>/dev/null | xargs -rn1 basename | sed 's/\.mjs$//')
+          want=${WANT_SUITES:-${configured:-$all}}
+          app=(); unit=()
+          for s in $want; do
+            [ -f "$dir/$s.mjs" ] || { echo "::error::no suite $dir/$s.mjs"; exit 1; }
+            # A suite needs Obsidian when it connects to one; the others only
+            # bundle the sources and run in plain Node.
+            if grep -q 'connect()' "$dir/$s.mjs"; then app+=("$s"); else unit+=("$s"); fi
+          done
+          case "${WANT_VERSIONS:-both}" in
+            latest) versions='["latest"]' ;;
+            earliest) versions='["earliest"]' ;;
+            both) versions='["earliest","latest"]' ;;
+            *) echo "::error::unknown versions $WANT_VERSIONS"; exit 1 ;;
+          esac
+          win='"windows-2025","windows-2022","windows-11-arm"'
+          mac='"macos-15","macos-15-intel"'
+          case "${WANT_OS:-linux}" in
+            linux) linux=true; desktops='[]' ;;
+            windows) linux=false; desktops='["windows-2025"]' ;;
+            windows-arm) linux=false; desktops='["windows-11-arm"]' ;;
+            windows-all) linux=false; desktops="[$win]" ;;
+            macos) linux=false; desktops='["macos-15"]' ;;
+            macos-all) linux=false; desktops="[$mac]" ;;
+            both) linux=true; desktops='["windows-2025"]' ;;
+            desktops) linux=true; desktops='["windows-2025","macos-15"]' ;;
+            all) linux=true; desktops="[$win,$mac]" ;;
+            *) echo "::error::unknown os $WANT_OS"; exit 1 ;;
+          esac
+          {
+            echo "suites=$(printf '%s\n' "${app[@]}" | jq -R . | jq -sc 'map(select(. != ""))')"
+            echo "unit=$(printf '%s\n' "${unit[@]}" | jq -R . | jq -sc 'map(select(. != ""))')"
+            echo "suitesdir=$dir"
+            echo "versions=$versions"
+            echo "linux=$linux"
+            echo "desktops=$desktops"
+          } >> "$GITHUB_OUTPUT"
 
-  suite:
+  unit:
     needs: plan
-    if: needs.plan.outputs.suites != '[]'
+    if: needs.plan.outputs.unit != '[]'
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        suite: ${{ fromJSON(needs.plan.outputs.unit) }}
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
+        with:
+          node-version: ${{ inputs.node-version }}
+          cache: npm
+      - run: npm ci
+      - run: node "$(jq -r '.obsidian.suitesDir // ".dev"' devkit.config.json 2>/dev/null || echo .dev)/${{ matrix.suite }}.mjs"
+
+  obsidian:
+    needs: plan
+    if: needs.plan.outputs.suites != '[]' && needs.plan.outputs.linux == 'true'
+    runs-on: ubuntu-latest
+    timeout-minutes: ${{ inputs.timeout }}
     strategy:
       fail-fast: false
       matrix:
         suite: ${{ fromJSON(needs.plan.outputs.suites) }}
-        version: ${{ fromJSON(inputs.versions) }}
-        runner: ${{ fromJSON(inputs.runners) }}
+        version: ${{ fromJSON(needs.plan.outputs.versions) }}
+    name: ${{ matrix.suite }} (Obsidian ${{ matrix.version }})
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
+        with:
+          node-version: ${{ inputs.node-version }}
+          cache: npm
+      - name: Build
+        run: ${{ inputs.build }}
+      - name: Cache Obsidian downloads
+        uses: actions/cache@v6
+        with:
+          path: ~/.obsidian-cache
+          key: obsidian-${{ matrix.version }}-${{ runner.os }}-${{ hashFiles('manifest.json') }}
+          restore-keys: obsidian-${{ matrix.version }}-${{ runner.os }}-
+      - name: Run ${{ matrix.suite }}
+        env:
+          OBSIDIAN_VERSION: ${{ matrix.version }}
+          SUITE_FILTER: ${{ inputs.filter }}
+          # Ubuntu's AppArmor keeps Electron's sandbox from starting on the
+          # runner; the suites drive a throwaway vault, nothing to sandbox from.
+          OBSIDIAN_EXTRA_ARGS: --no-sandbox
+          SHOTS: shots
+          RUN_SUITE: ${{ inputs.run-suite }}
+        run: |
+          set +e
+          xvfb-run -a -s "-screen 0 1920x1080x24" bash $RUN_SUITE "${{ matrix.suite }}"
+          code=$?
+          # 2: cases that could not be asked on this display — not a failure,
+          # but not to be read as clean.
+          if [ $code -eq 2 ]; then echo "::warning::${{ matrix.suite }} skipped cases it could not ask here"; exit 0; fi
+          exit $code
+      - name: Keep the pictures the suites take on purpose
+        if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          name: look-${{ matrix.suite }}-${{ matrix.version }}
+          path: shots/look/
+          if-no-files-found: ignore
+      - name: Keep Obsidian's log and the failure screenshots
+        if: failure()
+        uses: actions/upload-artifact@v7
+        with:
+          name: failures-${{ matrix.suite }}-${{ matrix.version }}
+          path: |
+            obsidian-*.log
+            shots/
+
+  obsidian-desktop:
+    needs: plan
+    # On demand only: Windows and macOS runners are slower to start, and on a
+    # private repository their minutes count 2× and 10×. windows-11-arm runs
+    # the Arm64 build of Obsidian (the launcher picks the runner's).
+    if: needs.plan.outputs.suites != '[]' && needs.plan.outputs.desktops != '[]'
     runs-on: ${{ matrix.runner }}
     timeout-minutes: ${{ inputs.timeout }}
+    strategy:
+      fail-fast: false
+      matrix:
+        suite: ${{ fromJSON(needs.plan.outputs.suites) }}
+        version: ${{ fromJSON(needs.plan.outputs.versions) }}
+        runner: ${{ fromJSON(needs.plan.outputs.desktops) }}
     name: ${{ matrix.suite }} (Obsidian ${{ matrix.version }}, ${{ matrix.runner }})
     steps:
       - uses: actions/checkout@v7
@@ -58,7 +184,8 @@ jobs:
       - name: Build
         shell: bash
         run: ${{ inputs.build }}
-      - uses: actions/cache@v6
+      - name: Cache Obsidian downloads
+        uses: actions/cache@v6
         with:
           path: ~/.obsidian-cache
           key: obsidian-${{ matrix.version }}-${{ runner.os }}-${{ runner.arch }}-${{ hashFiles('manifest.json') }}
@@ -67,24 +194,28 @@ jobs:
         shell: bash
         env:
           OBSIDIAN_VERSION: ${{ matrix.version }}
-          SUITE: ${{ matrix.suite }}
+          SUITE_FILTER: ${{ inputs.filter }}
+          SHOTS: shots
           RUN_SUITE: ${{ inputs.run-suite }}
-          SHOTS: ${{ runner.temp }}/shots
         run: |
           set +e
-          if [ "$RUNNER_OS" = Linux ]; then
-            OBSIDIAN_EXTRA_ARGS="--no-sandbox ${OBSIDIAN_EXTRA_ARGS:-}" xvfb-run -a -s "-screen 0 1920x1080x24" bash $RUN_SUITE "$SUITE"
-          else
-            bash $RUN_SUITE "$SUITE"
-          fi
+          # A desktop session is there already: no virtual display.
+          bash $RUN_SUITE "${{ matrix.suite }}"
           code=$?
-          if [ $code -eq 2 ]; then echo "::warning::$SUITE skipped cases it could not ask here"; exit 0; fi
-          [ $code -eq 0 ] || tail -30 "obsidian-$SUITE.log" 2>/dev/null
+          if [ $code -eq 2 ]; then echo "::warning::${{ matrix.suite }} skipped cases it could not ask here"; exit 0; fi
           exit $code
-      - name: Keep the failure shots
+      - name: Keep the pictures the suites take on purpose
+        if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          name: look-${{ matrix.suite }}-${{ matrix.version }}-${{ matrix.runner }}
+          path: shots/look/
+          if-no-files-found: ignore
+      - name: Keep Obsidian's log and the failure screenshots
         if: failure()
         uses: actions/upload-artifact@v7
         with:
           name: failures-${{ matrix.suite }}-${{ matrix.version }}-${{ matrix.runner }}
-          path: ${{ runner.temp }}/shots
-          if-no-files-found: ignore
+          path: |
+            obsidian-*.log
+            shots/
