@@ -122,6 +122,13 @@ if [ -z "${ready:-}" ]; then
 	echo "--- the page:" >&2
 	curl -s --max-time 3 "http://127.0.0.1:$PORT/json/list" | head -c 600 >&2
 	ask 'return JSON.stringify({ url: location.href, app: !!window.app, vault: window.app?.vault?.getName?.(), safe: window.app?.plugins?.isEnabled?.(), manifests: Object.keys(window.app?.plugins?.manifests ?? {}).length, enabled: [...(window.app?.plugins?.enabledPlugins ?? [])].length, title: document.title });' >&2
+	# The launcher starts Obsidian with its output discarded, so a crash at
+	# start says nothing: run the cached binary on its own for 20 s (Linux).
+	bin=$(ls -t "${OBSIDIAN_CACHE:-$HOME/.obsidian-cache}"/obsidian-installer/linux-*/Obsidian-*/obsidian 2>/dev/null | head -1 || true)
+	if [ -z "${OBSIDIAN_COMMAND:-}" ] && [ -n "$bin" ]; then
+		echo "--- $bin on its own, 20 s:" >&2
+		timeout 20 "$bin" --user-data-dir="$VAULTS/diagnose" --enable-logging=stderr ${OBSIDIAN_EXTRA_ARGS:-} 2>&1 | grep -v '^[[:space:]]*$' | tail -30 >&2 || true
+	fi
 	exit 1
 fi
 
