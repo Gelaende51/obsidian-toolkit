@@ -18,8 +18,8 @@ for the project itself (`allow-remote=root` in `.npmrc`), so the layers do not p
 other in:
 
 ```
-npm i -D https://codeload.github.com/Gelaende51/obsidian-toolkit/tar.gz/refs/tags/v0.8.0 \
-         https://codeload.github.com/Gelaende51/electron-template/tar.gz/refs/tags/v0.8.0
+npm i -D https://codeload.github.com/Gelaende51/obsidian-toolkit/tar.gz/refs/tags/v0.9.0 \
+         https://codeload.github.com/Gelaende51/electron-template/tar.gz/refs/tags/v0.9.0
 ```
 
 ## In here so far
@@ -66,6 +66,16 @@ npm i -D https://codeload.github.com/Gelaende51/obsidian-toolkit/tar.gz/refs/tag
 
 - `.github/workflows/suites.yml` — reusable: the live-app suites, one job per suite × Obsidian
   version × runner, suites from devkit.config.json, Obsidian cached, failure shots kept.
+
+- `bin/directory.mjs` (`obsidian-directory review <sha> | request|confirm|released <x.y.z>`) — the
+  community directory's side of a release, which has no API: a preview scan of a commit
+  compared with the last release (fails on a new Warning), queueing the release scan,
+  waiting for the public listing, reading and recording the release's review. Signs in with
+  the session cookie in `COOKIE` (headless Chrome, playwright-core).
+- `bin/directory-session.mjs` (`obsidian-directory-session [--install|--remove]`) — keeps that
+  cookie alive as the repository secret `OBSIDIAN_COMMUNITY_COOKIE`: its own Chrome profile,
+  a silent renewal, a headless sign-in with the account a wrapper hands over (never in the
+  environment of child processes), a desktop prompt as the last resort; daily by systemd timer.
 
 ## Coming
 

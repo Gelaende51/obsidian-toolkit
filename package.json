@@ -1,6 +1,6 @@
 {
 	"name": "obsidian-toolkit",
-	"version": "0.8.0",
+	"version": "0.9.0",
 	"description": "The Obsidian layer: an Obsidian-aware CDP session for live-app tests, neighbouring plugins' pre-releases, and (to come) obsidian-launcher glue, the upstream and beta watch, the community directory and release steps. Used with development-template and electron-template; obsidian-plugin-template starts projects on all three.",
 	"type": "module",
 	"exports": {
@@ -13,7 +13,9 @@
 		"obsidian-beta-local": "bin/beta-local.sh",
 		"obsidian-launch-alt": "bin/launch-alt.mjs",
 		"obsidian-run-suite": "bin/run-suite.sh",
-		"obsidian-prepare": "bin/prepare.mjs"
+		"obsidian-prepare": "bin/prepare.mjs",
+		"obsidian-directory": "bin/directory.mjs",
+		"obsidian-directory-session": "bin/directory-session.mjs"
 	},
 	"files": [
 		"lib",
