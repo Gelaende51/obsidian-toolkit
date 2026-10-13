@@ -1,0 +1,90 @@
+# A plugin's live-app suites against a sandboxed Obsidian: one job per suite ×
+# Obsidian version × runner, so a failure names its suite and version and the
+# rest still report. The suites come from devkit.config.json ("suites") unless
+# given. Obsidian downloads are cached per version and runner. A suite that
+# exits 2 skipped cases it could not ask there: a warning, not a failure. On a
+# failure the first failed assertion's screenshot and header HTML are kept
+# (development-template's harness, SHOTS). From Lure.
+#
+#   test:
+#     uses: Gelaende51/obsidian-toolkit/.github/workflows/suites.yml@v0.8.0
+#     with:
+#       versions: '["earliest", "latest"]'
+#       runners: '["ubuntu-latest", "windows-latest", "macos-latest"]'
+name: Suites
+on:
+  workflow_call:
+    inputs:
+      suites: { type: string, default: "", description: "JSON array; default: devkit.config.json's suites" }
+      versions: { type: string, default: '["earliest", "latest"]' }
+      runners: { type: string, default: '["ubuntu-latest"]' }
+      run-suite: { type: string, default: ".dev/ci-run.sh" }
+      build: { type: string, default: "npm ci && node esbuild.config.mjs production" }
+      node-version: { type: string, default: "24" }
+      timeout: { type: number, default: 60 }
+
+jobs:
+  plan:
+    runs-on: ubuntu-latest
+    outputs:
+      suites: ${{ steps.pick.outputs.suites }}
+    steps:
+      - uses: actions/checkout@v7
+      - id: pick
+        env:
+          GIVEN: ${{ inputs.suites }}
+        run: |
+          if [ -n "$GIVEN" ]; then echo "suites=$GIVEN" >> "$GITHUB_OUTPUT"
+          else echo "suites=$(jq -c '.suites // []' devkit.config.json)" >> "$GITHUB_OUTPUT"; fi
+
+  suite:
+    needs: plan
+    if: needs.plan.outputs.suites != '[]'
+    strategy:
+      fail-fast: false
+      matrix:
+        suite: ${{ fromJSON(needs.plan.outputs.suites) }}
+        version: ${{ fromJSON(inputs.versions) }}
+        runner: ${{ fromJSON(inputs.runners) }}
+    runs-on: ${{ matrix.runner }}
+    timeout-minutes: ${{ inputs.timeout }}
+    name: ${{ matrix.suite }} (Obsidian ${{ matrix.version }}, ${{ matrix.runner }})
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
+        with:
+          node-version: ${{ inputs.node-version }}
+          cache: npm
+      - name: Build
+        shell: bash
+        run: ${{ inputs.build }}
+      - uses: actions/cache@v6
+        with:
+          path: ~/.obsidian-cache
+          key: obsidian-${{ matrix.version }}-${{ runner.os }}-${{ runner.arch }}-${{ hashFiles('manifest.json') }}
+          restore-keys: obsidian-${{ matrix.version }}-${{ runner.os }}-${{ runner.arch }}-
+      - name: Run ${{ matrix.suite }}
+        shell: bash
+        env:
+          OBSIDIAN_VERSION: ${{ matrix.version }}
+          SUITE: ${{ matrix.suite }}
+          RUN_SUITE: ${{ inputs.run-suite }}
+          SHOTS: ${{ runner.temp }}/shots
+        run: |
+          set +e
+          if [ "$RUNNER_OS" = Linux ]; then
+            OBSIDIAN_EXTRA_ARGS="--no-sandbox ${OBSIDIAN_EXTRA_ARGS:-}" xvfb-run -a -s "-screen 0 1920x1080x24" bash $RUN_SUITE "$SUITE"
+          else
+            bash $RUN_SUITE "$SUITE"
+          fi
+          code=$?
+          if [ $code -eq 2 ]; then echo "::warning::$SUITE skipped cases it could not ask here"; exit 0; fi
+          [ $code -eq 0 ] || tail -30 "obsidian-$SUITE.log" 2>/dev/null
+          exit $code
+      - name: Keep the failure shots
+        if: failure()
+        uses: actions/upload-artifact@v7
+        with:
+          name: failures-${{ matrix.suite }}-${{ matrix.version }}-${{ matrix.runner }}
+          path: ${{ runner.temp }}/shots
+          if-no-files-found: ignore

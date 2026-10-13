@@ -18,8 +18,8 @@ for the project itself (`allow-remote=root` in `.npmrc`), so the layers do not p
 other in:
 
 ```
-npm i -D https://codeload.github.com/Gelaende51/obsidian-toolkit/tar.gz/refs/tags/v0.7.0 \
-         https://codeload.github.com/Gelaende51/electron-template/tar.gz/refs/tags/v0.7.0
+npm i -D https://codeload.github.com/Gelaende51/obsidian-toolkit/tar.gz/refs/tags/v0.8.0 \
+         https://codeload.github.com/Gelaende51/electron-template/tar.gz/refs/tags/v0.8.0
 ```
 
 ## In here so far
@@ -63,6 +63,9 @@ npm i -D https://codeload.github.com/Gelaende51/obsidian-toolkit/tar.gz/refs/tag
   `<suitesDir>/<suite>.mjs` (on `SUITE_NODE` under Wine). Use it as electron-suites' `RUN_SUITE`.
 - `bin/prepare.mjs` (`obsidian-prepare`) — neighbours off but the plugin and
   `obsidian.keepEnabled`, window at `obsidian.window`.
+
+- `.github/workflows/suites.yml` — reusable: the live-app suites, one job per suite × Obsidian
+  version × runner, suites from devkit.config.json, Obsidian cached, failure shots kept.
 
 ## Coming
 
