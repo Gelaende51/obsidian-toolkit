@@ -18,8 +18,8 @@ for the project itself (`allow-remote=root` in `.npmrc`), so the layers do not p
 other in:
 
 ```
-npm i -D https://codeload.github.com/Gelaende51/obsidian-toolkit/tar.gz/refs/tags/v0.10.2 \
-         https://codeload.github.com/Gelaende51/electron-template/tar.gz/refs/tags/v0.10.2
+npm i -D https://codeload.github.com/Gelaende51/obsidian-toolkit/tar.gz/refs/tags/v0.11.0 \
+         https://codeload.github.com/Gelaende51/electron-template/tar.gz/refs/tags/v0.11.0
 ```
 
 ## In here so far
@@ -87,6 +87,12 @@ npm i -D https://codeload.github.com/Gelaende51/obsidian-toolkit/tar.gz/refs/tag
   version's (heading, date, compare-link footnote in each file's own wording), and
   manifest.json, package.json and versions.json take the version.
 
-## Coming
-
-The rest of the release (the Release workflow itself as a reusable one).
+- `bin/release.mjs` also handles a first release (no version heading yet): the heading is
+  the version and date, the footnote the release page; it may be the manifest's own version.
+- `bin/release-dispatch.sh` (`obsidian-release-dispatch <x.y.z>`) — releases from the
+  maintainer's machine: checks readiness, a clean tree and HEAD = origin/main, starts the
+  Release workflow and follows it; without the directory secret, opens the check-release
+  page in the signed-in browser and waits for the listing.
+- `.github/workflows/release.yml` — reusable: preview scan, release commit (changelogs, version
+  files, optional after-commit step), tag, build, attested release, then the directory's
+  release scan, listing and recorded review.

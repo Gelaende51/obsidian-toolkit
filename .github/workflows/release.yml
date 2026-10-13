@@ -1,0 +1,207 @@
+# Releases an Obsidian plugin: prepares the release commit, tags it, builds
+# the assets on GitHub's runners and attaches a signed provenance attestation
+# to each, so anyone can verify that the main.js they load was built from the
+# repository at that commit (`gh attestation verify main.js --repo <owner/name>`).
+# Then the community directory's side, when the OBSIDIAN_COMMUNITY_COOKIE
+# secret holds a signed-in session (obsidian-toolkit's directory-session keeps
+# it alive): the preview scan before anything is written, the release scan,
+# the listing, and the release's review recorded in .github/directory-reviews/.
+# From Lure.
+#
+# The caller runs its own tests first and starts this two ways: a dispatch
+# with a version (obsidian-release-dispatch), where the changelogs and version
+# files are written here (obsidian-release); or a tag pushed by hand, released
+# as it is. Obsidian's installer reads manifest.json on the default branch and
+# then looks for a release tagged exactly that version — no "v".
+#
+#   on:
+#     push: { tags: ["[0-9]+.[0-9]+.[0-9]+"] }
+#     workflow_dispatch: { inputs: { version: { required: true } } }
+#   permissions: { contents: write, id-token: write, attestations: write }
+#   jobs:
+#     test:
+#       uses: ./.github/workflows/test.yml
+#     release:
+#       needs: test
+#       uses: Gelaende51/obsidian-toolkit/.github/workflows/release.yml@v0.11.0
+#       secrets: inherit
+#       with:
+#         version: ${{ inputs.version }}
+#         name: My Plugin
+name: Release
+on:
+  workflow_call:
+    inputs:
+      version: { type: string, default: "", description: "x.y.z on a dispatch; empty for a pushed tag" }
+      name: { type: string, required: true, description: "The plugin's name, for the tag message" }
+      assets: { type: string, default: "main.js manifest.json styles.css" }
+      release-files: { type: string, default: "CHANGELOG.md docs/i18n manifest.json package.json versions.json", description: "What the release commit takes" }
+      after-commit: { type: string, default: "", description: "Run after the release commit, its changes committed too (e.g. translation stamps naming that commit)" }
+      node-version: { type: string, default: "24" }
+    secrets:
+      OBSIDIAN_COMMUNITY_COOKIE:
+        required: false
+
+concurrency:
+  group: release
+  cancel-in-progress: false
+
+jobs:
+  # The directory's "Review branch" on the commit about to be released: fails
+  # on any Warning the last release did not have, before a commit, tag or
+  # release is made. Without the session the step is skipped.
+  review:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    env:
+      COOKIE: ${{ secrets.OBSIDIAN_COMMUNITY_COOKIE }}
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
+        with:
+          node-version: ${{ inputs.node-version }}
+      - name: Preview scan of ${{ github.sha }}, compared with the last release
+        if: env.COOKIE != ''
+        timeout-minutes: 35
+        run: |
+          npm ci --ignore-scripts --no-audit --no-fund
+          npm install --no-save --no-package-lock playwright-core@1
+          node node_modules/obsidian-toolkit/bin/directory.mjs review "${{ github.sha }}"
+
+  prepare:
+    if: inputs.version != ''
+    needs: review
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    outputs:
+      tag: ${{ steps.tag.outputs.tag }}
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          ref: main
+          fetch-depth: 0 # stamps read which commit last touched each file
+      - uses: actions/setup-node@v7
+        with:
+          node-version: ${{ inputs.node-version }}
+          cache: npm
+      - run: npm ci
+      - name: Move the changelogs under ${{ inputs.version }} and bump the version files
+        run: node node_modules/obsidian-toolkit/bin/release.mjs "${{ inputs.version }}"
+      - name: Build, as the release will
+        run: npm run build
+      - name: Commit, tag and push
+        id: tag
+        env:
+          VERSION: ${{ inputs.version }}
+          NAME: ${{ inputs.name }}
+          FILES: ${{ inputs.release-files }}
+          AFTER: ${{ inputs.after-commit }}
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          # shellcheck disable=SC2086
+          git add $FILES
+          git commit -m "Release $VERSION"
+          if [ -n "$AFTER" ]; then
+            eval "$AFTER"
+            git add -A
+            git commit -m "After the release commit of $VERSION" || true
+          fi
+          git tag -a "$VERSION" -m "$NAME $VERSION"
+          git push origin HEAD:main "$VERSION"
+          echo "tag=$VERSION" >> "$GITHUB_OUTPUT"
+
+  release:
+    needs: [review, prepare]
+    # After `prepare` on a dispatch; straight away on a tag pushed by hand.
+    if: always() && needs.review.result == 'success' && (needs.prepare.result == 'success' || needs.prepare.result == 'skipped')
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+      id-token: write
+      attestations: write
+    env:
+      TAG: ${{ needs.prepare.outputs.tag || github.ref_name }}
+    steps:
+      # A tag pushed from a workflow starts no workflow of its own, so the
+      # release is built from it here.
+      - uses: actions/checkout@v7
+        with:
+          ref: ${{ needs.prepare.outputs.tag || github.ref }}
+      - uses: actions/setup-node@v7
+        with:
+          node-version: ${{ inputs.node-version }}
+          cache: npm
+      - run: npm ci
+      # The same command a contributor runs: type check, lint, the other
+      # checks, then the bundle. A release that cannot pass them is not published.
+      - run: npm run build
+      - name: Fail if the tag and the manifest disagree
+        run: |
+          manifest=$(node -p "require('./manifest.json').version")
+          if [ "$manifest" != "$TAG" ]; then
+            echo "tag $TAG != manifest.json $manifest" >&2
+            exit 1
+          fi
+      - name: Attestation subjects
+        id: subjects
+        env:
+          ASSETS: ${{ inputs.assets }}
+        run: echo "list=$(echo $ASSETS | sed 's/ /, /g')" >> "$GITHUB_OUTPUT"
+      - uses: actions/attest-build-provenance@v4
+        with:
+          subject-path: ${{ steps.subjects.outputs.list }}
+      - name: Publish
+        env:
+          GH_TOKEN: ${{ github.token }}
+          ASSETS: ${{ inputs.assets }}
+        run: |
+          # shellcheck disable=SC2086
+          gh release create "$TAG" --title "$TAG" --generate-notes $ASSETS
+
+  # The community directory: queue its scan as the plugin's owner, wait until
+  # the public page lists the version, then read, compare and record the
+  # release's review. Without the session these are left to the maintainer
+  # (obsidian-release-dispatch opens the page in their signed-in browser).
+  directory:
+    needs: [prepare, release]
+    if: always() && needs.release.result == 'success'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    env:
+      TAG: ${{ needs.prepare.outputs.tag || github.ref_name }}
+      COOKIE: ${{ secrets.OBSIDIAN_COMMUNITY_COOKIE }}
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
+        with:
+          node-version: ${{ inputs.node-version }}
+      - name: Queue the directory's scan
+        if: env.COOKIE != ''
+        run: |
+          npm ci --ignore-scripts --no-audit --no-fund
+          npm install --no-save --no-package-lock playwright-core@1
+          node node_modules/obsidian-toolkit/bin/directory.mjs request "$TAG"
+      - name: Wait for the directory to list it
+        id: confirm
+        if: env.COOKIE != ''
+        timeout-minutes: 45
+        run: node node_modules/obsidian-toolkit/bin/directory.mjs confirm "$TAG"
+      - name: Read the release's review, compare it with the previous one and record it
+        if: env.COOKIE != ''
+        timeout-minutes: 35
+        run: node node_modules/obsidian-toolkit/bin/directory.mjs released "$TAG"
+      - name: Commit the recorded review
+        if: always() && env.COOKIE != '' && hashFiles(format('.github/directory-reviews/{0}.json', env.TAG)) != ''
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git pull -q --ff-only origin main
+          git add .github/directory-reviews
+          git commit -m "Record the directory's review of $TAG" && git push origin HEAD:main || true
+      - name: The listing agrees with the repository
+        if: always() && steps.confirm.outcome == 'success'
+        run: npm run -s check:listing -- --remote

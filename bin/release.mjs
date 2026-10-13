@@ -15,6 +15,9 @@
  *   pending section has not been translated yet: the release stops.
  * - manifest.json and package.json take the version; versions.json gains it,
  *   at the manifest's minAppVersion.
+ * - A first release (no version heading in CHANGELOG.md yet) may be the
+ *   manifest's own version; its headings are the version and date, its
+ *   footnote the release page.
  *
  * Not here, because they cannot run on a runner: translating the entries and
  * refreshing generated figures (they need the maintainer's machine).
@@ -41,12 +44,18 @@ const fail = (msg) => { console.error(msg); process.exit(1); };
 if (!/^\d+\.\d+\.\d+$/.test(version ?? "")) fail("usage: obsidian-release <x.y.z> [--check] [--date YYYY-MM-DD]");
 
 const read = (p) => readFileSync(join(root, p), "utf8");
+const VERSION_HEADING = /^## \d+\.\d+\.\d+ — /;
+const VERSION_HEADING_ANY = /^## \d+\.\d+\.\d+ — /m;
 const manifest = JSON.parse(read("manifest.json"));
 const newer = (a, b) => { const x = a.split(".").map(Number), y = b.split(".").map(Number); for (let i = 0; i < 3; i++) if (x[i] !== y[i]) return x[i] > y[i]; return false; };
-if (!newer(version, manifest.version)) fail(`${version} is not newer than manifest.json's ${manifest.version}`);
+// A first release has no version heading in any changelog yet: it may be the
+// manifest's own version (0.1.0 from the template), and its headings and
+// footnotes are written from scratch instead of from the previous release's.
+const firstRelease = !VERSION_HEADING_ANY.test(read("CHANGELOG.md"));
+if (!newer(version, manifest.version) && !(firstRelease && version === manifest.version)) fail(`${version} is not newer than manifest.json's ${manifest.version}`);
 const prev = manifest.version;
 
-const VERSION_HEADING = /^## \d+\.\d+\.\d+ — /;
+
 const problems = [];
 const writes = [];
 
@@ -60,6 +69,17 @@ function release(path, isEnglish) {
 		return;
 	}
 	if (isEnglish && pending[0] !== "## Unreleased") problems.push(`${path}: the first heading is "${pending[0]}", not "## Unreleased"`);
+	if (firstRelease) {
+		// Nothing to derive from: the version and date as the heading, and the
+		// release page as the footnote, in every language alike.
+		const body = lines.slice(pending[1] + 1).join("\n");
+		if (!/^- /m.test(body)) problems.push(`${path}: the pending section has no entries`);
+		lines[pending[1]] = `## ${version} — ${date}[^${version}]`;
+		while (lines.length && lines[lines.length - 1] === "") lines.pop();
+		lines.push("", `[^${version}]: <${REPO}/releases/tag/${version}>`, "");
+		writes.push([path, lines.join("\n")]);
+		return;
+	}
 	const before = heads.find(([l]) => l.includes(`[^${prev}]`));
 	const footAt = lines.findIndex((l) => l.startsWith(`[^${prev}]:`));
 	if (!before || footAt === -1) { problems.push(`${path}: no heading or footnote for ${prev} to derive from`); return; }
